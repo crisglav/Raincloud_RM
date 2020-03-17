@@ -3,7 +3,7 @@
 % Where 'data' is an M x N cell array of M measurements and N data series
 % See below for optional inputs.
 %
-% Modified: Cristina Gil, 17.02.2020
+% Modified: Cristina Gil, 17.03.2020
 
 function h = rm_raincloud_cg(data, varargin)
 %% ---------------------------- INPUT ----------------------------
@@ -16,8 +16,8 @@ function h = rm_raincloud_cg(data, varargin)
 % density_type          - choice of density algo ('ks' or 'rath'). Default = 'ks'
 % bandwidth             - bandwidth of smoothing kernel (default = 1)
 % plot_top_to_bottom    - logical to plot top-to-bottom (default=1)
-% plot_mean_lines       - logical set to 0 if you don't want mean lines plotted (default = 0)
-% plot_mean_dots        - logical set to 0 if you don't want mean dots plotted (default = 0)
+% plot_median_lines     - logical set to 0 if you don't want median lines plotted (default = 0)
+% plot_median_dots      - logical set to 0 if you don't want median dots plotted (default = 0)
 % box_on                - logical to turn box plots on/off (default = 0)
 % line_width            - scalar value to set global line width (default = 2)
 % bxcl                  - color of box outline
@@ -25,6 +25,7 @@ function h = rm_raincloud_cg(data, varargin)
 % box_dodge             - logical to turn on/off box plot dodging (default = 0)
 % raindrop_size         - scalar positive value to control the size of the raindrops (default = 3)
 % alpha                 - scalar positive value to increase cloud alpha (defalut = 1)
+% dist_plots            - scalar that defines the distance between plots (default = 1.5)  
 
 % ---------------------------- OUTPUT ----------------------------
 % h is a cell array containing handles of the various figure parts:
@@ -57,8 +58,8 @@ addOptional(p, 'colours', [0.5 0.5 0.5; 1 1 1; 0 0 0], @isnumeric)
 addOptional(p, 'density_type', 'ks', @ischar)
 addOptional(p, 'bandwidth', [])
 addOptional(p, 'plot_top_to_bottom', 1, @isnumeric)
-addOptional(p, 'plot_mean_lines', 1, @isnumeric)
-addOptional(p, 'plot_mean_dots', 1, @isnumeric)
+addOptional(p, 'plot_median_lines', 1, @isnumeric)
+addOptional(p, 'plot_median_dots', 0, @isnumeric)
 addOptional(p, 'box_on', 0, @isnumeric)
 addOptional(p, 'bxcl', [0 0 0], @isnumeric)
 addOptional(p, 'line_width', 2, validScalarPosNum)
@@ -66,6 +67,8 @@ addOptional(p, 'box_col_match', 0, @isnumeric)
 addOptional(p, 'box_dodge', 0, @isnumeric)
 addOptional(p, 'raindrop_size', 3, validScalarPosNum)
 addOptional(p, 'alpha', 0.5, @isnumeric)
+addOptional(p, 'dist_plots', 1.5, @isnumeric)
+
 
 
 % parse the input
@@ -76,8 +79,8 @@ colours             = p.Results.colours;
 bandwidth           = p.Results.bandwidth;
 density_type        = p.Results.density_type;
 plot_top_to_bottom  = p.Results.plot_top_to_bottom;
-plot_mean_lines     = p.Results.plot_mean_lines;
-plot_mean_dots      = p.Results.plot_mean_dots;
+plot_median_lines   = p.Results.plot_median_lines;
+plot_median_dots    = p.Results.plot_median_dots;
 box_on              = p.Results.box_on;
 bxcl                = p.Results.bxcl;
 line_width          = p.Results.line_width;
@@ -85,6 +88,8 @@ box_col_match       = p.Results.box_col_match;
 box_dodge           = p.Results.box_dodge;
 raindrop_size       = p.Results.raindrop_size;
 alpha               = p.Results.alpha;
+dist_plots          = p.Results.dist_plots;
+
 
 
 %% Calculate properties of density plots
@@ -132,11 +137,10 @@ for i = 1:n_plots_per_series
 end
 
 % determine spacing between plots
-spacing     = 2 * mean(mean(cellfun(@max, ks)));
-jit_width = spacing / 8;
-plotting_space=jit_width*2;
-spacing = spacing+(n_series-1)*plotting_space;
-ks_offsets  = (0:n_plots_per_series-1) .* spacing;
+plotting_space = mean(mean(cellfun(@max, ks)));
+jit_width = plotting_space/8;
+spacing = plotting_space * (n_series+dist_plots); % dist_plots to have a margin. set higher if you want more distance between plots
+ks_offsets = (0:n_plots_per_series-1) .* spacing;
 
 % flip so first plot in series is plotted on the *top*
 ks_offsets  = fliplr(ks_offsets);
@@ -170,26 +174,25 @@ drop_pos = cell(size(data));
 for i = 1:n_plots_per_series
     for j = 1:n_series
         if box_dodge
-            jit = rand(1, length(data{i,j})) * jit_width * 0.6; % Compress the jitter
-            drop_pos{i,j}=ks_offsets(i)-(j*2-1)*jit_width+j*0.4*jit_width-jit; % Move the rain 0.4    
+            jit = rand(1, length(data{i,j}))*jit_width;
+            offset = ks_offsets(i)-(4*j-1)*jit_width;
+            drop_pos{i,j}=offset-jit;
 
         else
-            jit = rand(1, length(data{i,j})) * jit_width;
-            drop_pos{i,j}=ks_offsets(i)-j*jit_width-j*0.4*jit_width-jit;
+            jit = rand(1, length(data{i,j}))*jit_width;
+            offset = ks_offsets(i)-(4*j-2.5)*jit_width;
+            drop_pos{i,j}=offset-jit;
 
         end
     end
 end
-
-%% means (for mean dots)
-
-cell_means = cellfun(@mean, data);
 
 %% plot
 
 hold on
 
 % patches
+offsets = zeros(n_plots_per_series,n_series);
 for i = 1:n_plots_per_series
     for j = 1:n_series
         
@@ -205,23 +208,17 @@ for i = 1:n_plots_per_series
                 bxcl = colours(j,:);
             end
             if box_dodge
-                offset = ks_offsets(i)-(j*2-1)*jit_width-1.1*jit_width+j*0.4*jit_width; % Move the rain 0.4 
-                box_pos = [Y{i,j}(1) offset-(jit_width*0.3) Y{i,j}(2)-Y{i,j}(1) jit_width*0.6];
-                % mean line
-                h.b1{i,j} = line([Y{i,j}(3) Y{i,j}(3)], [offset-(jit_width*0.3) offset+(jit_width*0.3)], 'col', bxcl, 'LineWidth', line_width);
-                % whiskers
-                h.b2{i,j} = line([Y{i,j}(2) Y{i,j}(5)], [offset offset], 'col', bxcl, 'LineWidth', line_width);
-                h.b3{i,j} = line([Y{i,j}(1) Y{i,j}(4)], [offset offset], 'col', bxcl, 'LineWidth', line_width);
-
+                offsets(i,j) = ks_offsets(i)-(4*j-2.5)*jit_width;
             else
-                offset = ks_offsets(i)-(j+0.5)*jit_width-j*0.4*jit_width;
-                box_pos = [Y{i,j}(1) offset-(jit_width*0.5) Y{i,j}(2)-Y{i,j}(1) jit_width];
-                % mean line
-                h.b1{i,j} = line([Y{i,j}(3) Y{i,j}(3)], [offset-(jit_width*0.5) offset+(jit_width*0.5)], 'col', bxcl, 'LineWidth', line_width);
-                % whiskers
-                h.b2{i,j} = line([Y{i,j}(2) Y{i,j}(5)], [offset offset], 'col', bxcl, 'LineWidth', line_width);
-                h.b3{i,j} = line([Y{i,j}(1) Y{i,j}(4)], [offset offset], 'col', bxcl, 'LineWidth', line_width);
+                offsets(i,j) = ks_offsets(i)-(4*j-2)*jit_width;
             end
+                box_pos = [Y{i,j}(1) offsets(i,j)-jit_width*0.5 Y{i,j}(2)-Y{i,j}(1) jit_width];
+                % mean line
+                h.b1{i,j} = line([Y{i,j}(3) Y{i,j}(3)], [offsets(i,j)-jit_width*0.5 offsets(i,j)+jit_width*0.5], 'col', bxcl, 'LineWidth', line_width);
+                % whiskers
+                h.b2{i,j} = line([Y{i,j}(2) Y{i,j}(5)], [offsets(i,j) offsets(i,j)], 'col', bxcl, 'LineWidth', line_width);
+                h.b3{i,j} = line([Y{i,j}(1) Y{i,j}(4)], [offsets(i,j) offsets(i,j)], 'col', bxcl, 'LineWidth', line_width);
+                
                 % 'box' of the 'boxplot'
                 h.b4{i,j} = rectangle('Position', box_pos);
                 set(h.b4{i,j}, 'EdgeColor', bxcl)
@@ -231,24 +228,27 @@ for i = 1:n_plots_per_series
     end
 end
 
-% plot mean lines
-if plot_mean_lines
+%% means (for mean dots)
+cell_medians = cellfun(@median, data);
+
+% plot meadian lines
+if plot_median_lines
     for i = 1:n_plots_per_series - 1 % We have n_plots_per_series-1 lines because lines connect pairs of points
         for j = 1:n_series
-
-            h.l(i, j) = line(cell_means([i i+1], j), ks_offsets([i i+1]), 'LineWidth', 4, 'Color', colours(j, :));
-
+            if box_col_match
+                bxcl = colours(j,:);
+            end
+            % Mean line reaches the boxplot
+            h.l(i, j) = line(cell_medians([i i+1], j), [offsets(i,j) offsets(i+1,j)], 'LineWidth', line_width, 'Color', bxcl);
         end
     end
 end
 
-% plot mean dots
-if plot_mean_dots
+% plot median dots
+if plot_median_dots
     for i = 1:n_plots_per_series
         for j = 1:n_series
-
-            h.m(i, j) = scatter(cell_means(i, j), ks_offsets(i), 'MarkerFaceColor', colours(j, :), 'MarkerEdgeColor', [0 0 0], 'MarkerFaceAlpha', 1, 'SizeData', raindrop_size * 5, 'LineWidth', 2);
-
+            h.m(i, j) = scatter(cell_medians(i, j), ks_offsets(i), 'MarkerFaceColor', colours(j, :), 'MarkerEdgeColor', [0 0 0], 'MarkerFaceAlpha', 1, 'SizeData', raindrop_size * 5, 'LineWidth', 2);
         end
     end
 end
