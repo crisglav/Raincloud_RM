@@ -26,6 +26,7 @@ function h = rm_raincloud_cg(data, varargin)
 % raindrop_size         - scalar positive value to control the size of the raindrops (default = 3)
 % alpha                 - scalar positive value to increase cloud alpha (defalut = 1)
 % dist_plots            - scalar that defines the distance between plots (default = 1.5)  
+% aligned_plots         - logical to align plots (default 1). It could affect the visualization scales
 
 % ---------------------------- OUTPUT ----------------------------
 % h is a cell array containing handles of the various figure parts:
@@ -68,6 +69,7 @@ addOptional(p, 'box_dodge', 0, @isnumeric)
 addOptional(p, 'raindrop_size', 3, validScalarPosNum)
 addOptional(p, 'alpha', 0.5, @isnumeric)
 addOptional(p, 'dist_plots', 1.5, @isnumeric)
+addOptional(p, 'aligned_plots',1, @isnumeric)
 
 
 
@@ -89,8 +91,7 @@ box_dodge           = p.Results.box_dodge;
 raindrop_size       = p.Results.raindrop_size;
 alpha               = p.Results.alpha;
 dist_plots          = p.Results.dist_plots;
-
-
+aligned_plots       = p.Results.aligned_plots;
 
 %% Calculate properties of density plots
 
@@ -115,7 +116,7 @@ for i = 1:n_plots_per_series
             case 'ks'
                 
                 % compute density using 'ksdensity'
-                [ks{i, j}, x{i, j}] = ksdensity(data{i, j}, 'NumPoints', n_bins(i, j), 'bandwidth', bandwidth);
+                [ks{i, j}, x{i, j}] = ksdensity(data{i, j}, 'NumPoints', n_bins(i, j), 'bandwidth', bandwidth, 'Function','pdf');
                 
             case 'rash'
                 
@@ -139,8 +140,12 @@ end
 % determine spacing between plots
 plotting_space = mean(mean(cellfun(@max, ks)));
 jit_width = plotting_space/8;
-spacing = plotting_space * (n_series+dist_plots); % dist_plots to have a margin. set higher if you want more distance between plots
-ks_offsets = (0:n_plots_per_series-1) .* spacing;
+if aligned_plots==1
+    ks_offsets = (0:n_plots_per_series-1)/dist_plots; % For aligned version
+else
+    spacing = plotting_space * (n_series+dist_plots); % dist_plots to have a margin. set higher if you want more distance between plots
+    ks_offsets = (0:n_plots_per_series-1) .* spacing;
+end
 
 % flip so first plot in series is plotted on the *top*
 ks_offsets  = fliplr(ks_offsets);
