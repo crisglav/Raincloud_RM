@@ -1,7 +1,19 @@
 %% rm_raincloud_cg - plots a raincloud of different groups and observations
-% Use like: h = rm_raincloud_cg(data)
+% Use like: h = rm_raincloud_cg(data,'parameter','value')
 % Where 'data' is an M x N cell array of M measurements and N data series
-% See below for optional inputs.
+% See below for optional parameters.
+% 
+% ----------------------------- NEW! ------------------------------------
+% - Modfified 'colours' parameter. Now an array of colours can be given so
+% that each measure has a different colour.
+% - Renamed 'alpha' parameter to 'opacity'. Controls the opacity of the
+% cloud and the raindrops. Range 0 - 1
+% - Added 'box_width' parameter. Sets the width of the boxplots and rain
+% jitter to a value specified by the user.
+% - Deleted 'plot_top_to_bottom' parameter
+% - Change logical parameters: now input must be true or false (before 0 or1)
+% - Add limits to y axis so that plots remain aligned
+% - Fix typos: mean to median
 %
 % Modified: Cristina Gil, 26.03.2020
 
@@ -205,7 +217,7 @@ for i = 1:n_plots_per_series
         % scatter rainclouds
         h.s{i, j} = scatter(data{i, j}, drop_pos{i,j}, 'MarkerFaceColor', colours(i, :, j), 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', opacity, 'SizeData', raindrop_size);
     
-        % Plot boxplots [CGA]
+        % Plot boxplots
         if box_on
             if box_col_match
                 bxcl = colours(i,:,j);
