@@ -3,7 +3,7 @@
 % Where 'data' is an M x N cell array of M measurements and N data series
 % See below for optional inputs.
 %
-% Modified: Cristina Gil, 17.03.2020
+% Modified: Cristina Gil, 26.03.2020
 
 function h = rm_raincloud_cg(data, varargin)
 %% ---------------------------- INPUT ----------------------------
@@ -12,21 +12,21 @@ function h = rm_raincloud_cg(data, varargin)
 %
 % --------------------- OPTIONAL ARGUMENTS ----------------------
 %
-% colours               - N x 3 array defining the colour to plot each data series % color vector for rainclouds (default gray, i.e. = [.5 .5 .5])
+% colours               - M x 3 x N array defining the colour to plot each data series % color vector for rainclouds (default gray, i.e. = [.5 .5 .5])
 % density_type          - choice of density algo ('ks' or 'rath'). Default = 'ks'
 % bandwidth             - bandwidth of smoothing kernel (default = 1)
-% plot_top_to_bottom    - logical to plot top-to-bottom (default=1)
-% plot_median_lines     - logical set to 0 if you don't want median lines plotted (default = 0)
-% plot_median_dots      - logical set to 0 if you don't want median dots plotted (default = 0)
-% box_on                - logical to turn box plots on/off (default = 0)
+% plot_median_lines     - logical. Set to false if you don't want median lines plotted (default = false)
+% plot_median_dots      - logical. Set to false if you don't want median dots plotted (default = false)
+% box_on                - logical. Turns boxplots on/off (default = false)
 % line_width            - scalar value to set global line width (default = 2)
-% bxcl                  - color of box outline
-% box_col_match         - logical to set it so that boxes match the colour of clouds (default = 0)
-% box_dodge             - logical to turn on/off box plot dodging (default = 0)
-% raindrop_size         - scalar positive value to control the size of the raindrops (default = 3)
-% alpha                 - scalar positive value to increase cloud alpha (defalut = 1)
-% dist_plots            - scalar that defines the distance between plots (default = 1.5)  
-% aligned_plots         - logical to align plots (default 1). It could affect the visualization scales
+% box_width             -
+% bxcl                  - Array double 3x1. Color of box outline (defalut [0 0 0])
+% box_col_match         - logical. If true boxes match the colour of clouds (default = false)
+% box_dodge             - logical. Turn on/off box plot dodging (default = false)
+% raindrop_size         - scalar. Positive value to control the size of the raindrops (default = 3)
+% opacity               - double with range 0 to 1. Controls the opacity of the cloud (defalut = 1)
+% dist_plots            - scalar. Defines the distance between plots (default = 1.5)  
+% aligned_plots         - logical. Align plots in the same x axes (default = true). 
 
 % ---------------------------- OUTPUT ----------------------------
 % h is a cell array containing handles of the various figure parts:
@@ -35,8 +35,8 @@ function h = rm_raincloud_cg(data, varargin)
 % h.b1{i,j} [optional: only if box_on is true] is the handle for the mean line of the boxplots
 % h.b2{i,j} [optional: only if box_on is true] is the handle for right whisker of the boxplots
 % h.b3{i,j} [optional: only if box_on is true] is the handle for left whisker of the boxplots
-% h.m(i,j)  [optional: only if plot_mean_dots is true] is the handle to the single, large dot that represents mean(data{i,j})
-% h.l(i,j)  [optional: only if plot_mean_lines is true] is the handle for the line connecting h.m(i,j) and h.m(i+1,j)
+% h.m(i,j)  [optional: only if plot_median_dots is true] is the handle to the single, large dot that represents median(data{i,j})
+% h.l(i,j)  [optional: only if plot_median_lines is true] is the handle for the line connecting h.m(i,j) and h.m(i+1,j)
 %
 % ------------------------ EXAMPLE USAGE -------------------------
 % h = rm_raincloud_cg(raincloudData,'colours',[0 .3961 .7412; .8902 .4471 .1333],'plot_mean_lines',0,'box_on',1)
@@ -58,19 +58,18 @@ addRequired(p, 'data', @iscell);
 addOptional(p, 'colours', [0.5 0.5 0.5; 1 1 1; 0 0 0], @isnumeric)
 addOptional(p, 'density_type', 'ks', @ischar)
 addOptional(p, 'bandwidth', [])
-addOptional(p, 'plot_top_to_bottom', 1, @isnumeric)
-addOptional(p, 'plot_median_lines', 1, @isnumeric)
-addOptional(p, 'plot_median_dots', 0, @isnumeric)
-addOptional(p, 'box_on', 0, @isnumeric)
+addOptional(p, 'plot_median_lines', true, @islogical)
+addOptional(p, 'plot_median_dots', false, @islogical)
+addOptional(p, 'box_on', false, @islogical)
 addOptional(p, 'bxcl', [0 0 0], @isnumeric)
 addOptional(p, 'line_width', 2, validScalarPosNum)
-addOptional(p, 'box_col_match', 0, @isnumeric)
-addOptional(p, 'box_dodge', 0, @isnumeric)
+addOptional(p, 'box_width',0.1, @isnumeric)
+addOptional(p, 'box_col_match', false, @islogical)
+addOptional(p, 'box_dodge', false, @islogical)
 addOptional(p, 'raindrop_size', 3, validScalarPosNum)
-addOptional(p, 'alpha', 0.5, @isnumeric)
+addOptional(p, 'opacity', 0.5, @isnumeric)
 addOptional(p, 'dist_plots', 1.5, @isnumeric)
-addOptional(p, 'aligned_plots',1, @isnumeric)
-
+addOptional(p, 'aligned_plots',true, @islogical)
 
 
 % parse the input
@@ -80,16 +79,16 @@ data                = p.Results.data;
 colours             = p.Results.colours;
 bandwidth           = p.Results.bandwidth;
 density_type        = p.Results.density_type;
-plot_top_to_bottom  = p.Results.plot_top_to_bottom;
 plot_median_lines   = p.Results.plot_median_lines;
 plot_median_dots    = p.Results.plot_median_dots;
 box_on              = p.Results.box_on;
 bxcl                = p.Results.bxcl;
 line_width          = p.Results.line_width;
+box_width           = p.Results.box_width;
 box_col_match       = p.Results.box_col_match;
 box_dodge           = p.Results.box_dodge;
 raindrop_size       = p.Results.raindrop_size;
-alpha               = p.Results.alpha;
+opacity             = p.Results.opacity;
 dist_plots          = p.Results.dist_plots;
 aligned_plots       = p.Results.aligned_plots;
 
@@ -137,12 +136,14 @@ for i = 1:n_plots_per_series
     end
 end
 
-% determine spacing between plots
-plotting_space = mean(mean(cellfun(@max, ks)));
-jit_width = plotting_space/8;
 if aligned_plots==1
-    ks_offsets = (0:n_plots_per_series-1)/dist_plots; % For aligned version
+    spacing = 1/dist_plots;
+    ks_offsets = (0:n_plots_per_series-1).*spacing; % For aligned version
+    jit_width = box_width*spacing;
 else
+    % determine spacing between plots
+    plotting_space = mean(mean(cellfun(@max, ks)));
+    jit_width = plotting_space/8;
     spacing = plotting_space * (n_series+dist_plots); % dist_plots to have a margin. set higher if you want more distance between plots
     ks_offsets = (0:n_plots_per_series-1) .* spacing;
 end
@@ -158,7 +159,7 @@ for i = 1:n_plots_per_series
     end
 end
 
-%% boxplot [CGA]
+%% boxplot parameters 
 if box_on
     Y = cell(size(data));
     for i = 1:n_plots_per_series
@@ -174,7 +175,6 @@ if box_on
 end
 
 %% jitter for the raindrops
-
 drop_pos = cell(size(data));
 for i = 1:n_plots_per_series
     for j = 1:n_series
@@ -182,7 +182,6 @@ for i = 1:n_plots_per_series
             jit = rand(1, length(data{i,j}))*jit_width;
             offset = ks_offsets(i)-(4*j-1)*jit_width;
             drop_pos{i,j}=offset-jit;
-
         else
             jit = rand(1, length(data{i,j}))*jit_width;
             offset = ks_offsets(i)-(4*j-2.5)*jit_width;
@@ -192,8 +191,7 @@ for i = 1:n_plots_per_series
     end
 end
 
-%% plot
-
+%% plot cloud, raindrop and boxplot
 hold on
 
 % patches
@@ -202,15 +200,15 @@ for i = 1:n_plots_per_series
     for j = 1:n_series
         
         % plot patches
-        h.p{i, j} = patch('Faces', faces{i, j}, 'Vertices', verts{i, j}, 'FaceVertexCData', colours(j, :), 'FaceColor', 'flat', 'EdgeColor', 'none', 'FaceAlpha', alpha);
+        h.p{i, j} = patch('Faces', faces{i, j}, 'Vertices', verts{i, j}, 'FaceVertexCData', colours(i, :, j), 'FaceColor', 'flat', 'EdgeColor', 'none', 'FaceAlpha', opacity);
         
         % scatter rainclouds
-        h.s{i, j} = scatter(data{i, j}, drop_pos{i,j}, 'MarkerFaceColor', colours(j, :), 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.5, 'SizeData', raindrop_size);
+        h.s{i, j} = scatter(data{i, j}, drop_pos{i,j}, 'MarkerFaceColor', colours(i, :, j), 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', opacity, 'SizeData', raindrop_size);
     
         % Plot boxplots [CGA]
         if box_on
             if box_col_match
-                bxcl = colours(j,:);
+                bxcl = colours(i,:,j);
             end
             if box_dodge
                 offsets(i,j) = ks_offsets(i)-(4*j-2.5)*jit_width;
@@ -218,7 +216,7 @@ for i = 1:n_plots_per_series
                 offsets(i,j) = ks_offsets(i)-(4*j-2)*jit_width;
             end
                 box_pos = [Y{i,j}(1) offsets(i,j)-jit_width*0.5 Y{i,j}(2)-Y{i,j}(1) jit_width];
-                % mean line
+                % median line
                 h.b1{i,j} = line([Y{i,j}(3) Y{i,j}(3)], [offsets(i,j)-jit_width*0.5 offsets(i,j)+jit_width*0.5], 'col', bxcl, 'LineWidth', line_width);
                 % whiskers
                 h.b2{i,j} = line([Y{i,j}(2) Y{i,j}(5)], [offsets(i,j) offsets(i,j)], 'col', bxcl, 'LineWidth', line_width);
@@ -233,17 +231,17 @@ for i = 1:n_plots_per_series
     end
 end
 
-%% means (for mean dots)
+%% plot median dots/lines
 cell_medians = cellfun(@median, data);
 
-% plot meadian lines
+% plot median lines
 if plot_median_lines
     for i = 1:n_plots_per_series - 1 % We have n_plots_per_series-1 lines because lines connect pairs of points
         for j = 1:n_series
             if box_col_match
-                bxcl = colours(j,:);
+                bxcl = colours(i,:,j);
             end
-            % Mean line reaches the boxplot
+            % median line reaches the boxplot
             h.l(i, j) = line(cell_medians([i i+1], j), [offsets(i,j) offsets(i+1,j)], 'LineWidth', line_width, 'Color', bxcl);
         end
     end
@@ -253,28 +251,20 @@ end
 if plot_median_dots
     for i = 1:n_plots_per_series
         for j = 1:n_series
-            h.m(i, j) = scatter(cell_medians(i, j), ks_offsets(i), 'MarkerFaceColor', colours(j, :), 'MarkerEdgeColor', [0 0 0], 'MarkerFaceAlpha', 1, 'SizeData', raindrop_size * 5, 'LineWidth', 2);
+            h.m(i, j) = scatter(cell_medians(i, j), ks_offsets(i), 'MarkerFaceColor', colours(i, :, j), 'MarkerEdgeColor', [0 0 0], 'MarkerFaceAlpha', 1, 'SizeData', raindrop_size * 5, 'LineWidth', 2);
         end
     end
 end
 
 %% clear up axis labels
-
 % 'YTick', likes values that *increase* as you go up the Y-axis, but we plot the first
 % raincloud at the top. So flip the vector around
 set(gca, 'YTick', fliplr(ks_offsets));
-
+ylim([-spacing/1.5 , spacing*n_plots_per_series-spacing+spacing/1.5])
 set(gca, 'YTickLabel', n_plots_per_series:-1:1);
 
-%% determine plot rotation
-% default option is left-to-right
-% plot_top_to_bottom can be set to 1 
+%% plot rotation
 % NOTE: Because it's easier, we actually prepare everything plotted
-% top-to-bottom, then - by default - we rotate it here. That's why the
-% logical is constructed the way it is.
-
-% rotate and flip
-if plot_top_to_bottom
-    view([90 -90]);
-    axis ij
-end
+% top-to-bottom, then - by default - we rotate it here.
+view([90 -90]);
+axis ij
