@@ -24,19 +24,19 @@ function h = rm_raincloud_cg(data, varargin)
 %
 % --------------------- OPTIONAL ARGUMENTS ----------------------
 %
-% colours               - M x 3 x N array defining the colour to plot each data series % color vector for rainclouds (default gray, i.e. = [.5 .5 .5])
+% colours               - M x 3 x N array defining the colour to plot each data series
 % density_type          - choice of density algo ('ks' or 'rath'). Default = 'ks'
 % bandwidth             - Controls the smooth of the cloud. Set to empty [] to automatically adjust to the data (default = 1)
-% plot_median_lines     - logical. Set to false if you don't want median lines plotted (default = false)
+% plot_median_lines     - logical. Set to false if you don't want median lines plotted (default = true)
 % plot_median_dots      - logical. Set to false if you don't want median dots plotted (default = false)
-% box_on                - logical. Turns boxplots on/off (default = false)
+% box_on                - logical. Turns boxplots on/off (default = true)
 % line_width            - scalar value to set global line width (default = 2)
-% box_width             - scalar value that defines the width of the boxplot and the rain
+% box_width             - scalar value that defines the width of the boxplot and the rain (default = 0.1)
 % bxcl                  - Array double 3x1. Color of box outline (defalut [0 0 0])
 % box_col_match         - logical. If true boxes match the colour of clouds (default = false)
 % box_dodge             - logical. Turn on/off box plot dodging (default = false)
 % raindrop_size         - scalar. Positive value to control the size of the raindrops (default = 3)
-% opacity               - double with range 0 to 1. Controls the opacity of the cloud (defalut = 1)
+% opacity               - double with range 0 to 1. Controls the opacity of the cloud (defalut = 0.5)
 % dist_plots            - scalar. Defines the distance between plots (default = 1.5)  
 % aligned_plots         - logical. Align plots in the same x axes (default = true). 
 
@@ -72,7 +72,7 @@ addOptional(p, 'density_type', 'ks', @ischar)
 addOptional(p, 'bandwidth', 1)
 addOptional(p, 'plot_median_lines', true, @islogical)
 addOptional(p, 'plot_median_dots', false, @islogical)
-addOptional(p, 'box_on', false, @islogical)
+addOptional(p, 'box_on', true, @islogical)
 addOptional(p, 'bxcl', [0 0 0], @isnumeric)
 addOptional(p, 'line_width', 2, validScalarPosNum)
 addOptional(p, 'box_width',0.1, @isnumeric)
